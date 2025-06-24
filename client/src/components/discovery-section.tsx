@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, X, Heart, MapPin } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ArrowLeft, X, Heart, MapPin, Share2, MessageCircle, Camera } from "lucide-react";
 import { Destination } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -32,12 +33,14 @@ const koreanRegions = [
 ];
 
 export default function DiscoverySection({ onBack }: DiscoverySectionProps) {
-  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
+  const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
   const [showSwipeCards, setShowSwipeCards] = useState(false);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [sessionId] = useState(() => Math.random().toString(36).substr(2, 9));
   const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
   const [likedPreferences, setLikedPreferences] = useState<string[]>([]);
+  const [finalRecommendation, setFinalRecommendation] = useState<Destination | null>(null);
+  const [showResultModal, setShowResultModal] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: destinations = [] } = useQuery<Destination[]>({
@@ -58,9 +61,9 @@ export default function DiscoverySection({ onBack }: DiscoverySectionProps) {
     }
   });
 
-  // Filter destinations based on selected region and user preferences
+  // Filter destinations based on selected regions and user preferences
   const filteredDestinations = destinations.filter(dest => {
-    if (selectedRegion && dest.region !== selectedRegion) return false;
+    if (selectedRegions.length > 0 && !selectedRegions.includes(dest.region)) return false;
     return true;
   }).sort(() => Math.random() - 0.5); // Randomize order
 
@@ -78,14 +81,45 @@ export default function DiscoverySection({ onBack }: DiscoverySectionProps) {
   const currentCard = currentDestinations[currentCardIndex];
 
   const handleRegionClick = (regionId: string) => {
-    setSelectedRegion(regionId);
+    setSelectedRegions(prev => {
+      if (prev.includes(regionId)) {
+        return prev.filter(id => id !== regionId);
+      } else {
+        return [...prev, regionId];
+      }
+    });
   };
 
   const handleStartDiscovery = () => {
-    if (!selectedRegion) return;
+    if (selectedRegions.length === 0) return;
     setShowSwipeCards(true);
     setCurrentCardIndex(0);
     setLikedPreferences([]);
+  };
+
+  const generateFinalRecommendation = () => {
+    const refinedDestinations = getRefinedDestinations();
+    if (refinedDestinations.length > 0) {
+      const randomIndex = Math.floor(Math.random() * refinedDestinations.length);
+      setFinalRecommendation(refinedDestinations[randomIndex]);
+      setShowResultModal(true);
+    }
+  };
+
+  const handleShare = (platform: 'instagram' | 'kakao') => {
+    if (!finalRecommendation) return;
+    
+    const shareText = `TripPick에서 발견한 여행지: ${finalRecommendation.nameKorean}\n${finalRecommendation.description}`;
+    const shareUrl = window.location.href;
+    
+    if (platform === 'instagram') {
+      // Instagram doesn't support direct sharing URLs, so we copy to clipboard
+      navigator.clipboard.writeText(`${shareText}\n\n${shareUrl}`);
+      alert('Instagram 공유용 텍스트가 클립보드에 복사되었습니다!');
+    } else if (platform === 'kakao') {
+      const kakaoUrl = `https://story.kakao.com/share?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
+      window.open(kakaoUrl, '_blank');
+    }
   };
 
   const handleSwipe = (direction: 'left' | 'right') => {
@@ -139,9 +173,15 @@ export default function DiscoverySection({ onBack }: DiscoverySectionProps) {
                     </Badge>
                   ))}
                 </div>
-                <p className="text-gray-600 korean-text">
+                <p className="text-gray-600 korean-text mb-6">
                   이런 스타일의 여행지들을 추천해드릴게요!
                 </p>
+                <Button 
+                  onClick={generateFinalRecommendation}
+                  className="bg-primary text-white korean-text px-8 py-3"
+                >
+                  🎯 맞춤 여행지 추천받기
+                </Button>
               </div>
               
               <div className="flex gap-4 justify-center">
@@ -150,7 +190,8 @@ export default function DiscoverySection({ onBack }: DiscoverySectionProps) {
                     setShowSwipeCards(false);
                     setCurrentCardIndex(0);
                   }}
-                  className="bg-primary text-white korean-text"
+                  variant="outline"
+                  className="korean-text"
                 >
                   다시 시작하기
                 </Button>
@@ -302,7 +343,7 @@ export default function DiscoverySection({ onBack }: DiscoverySectionProps) {
                   className={`absolute w-6 h-6 rounded-full border-2 border-white shadow-lg transition-all duration-300 hover:scale-150 z-10 ${
                     region.color
                   } ${
-                    selectedRegion === region.id 
+                    selectedRegions.includes(region.id)
                       ? 'scale-150 ring-4 ring-pink-400 ring-opacity-50' 
                       : 'hover:ring-2 hover:ring-gray-300'
                   }`}
@@ -316,13 +357,17 @@ export default function DiscoverySection({ onBack }: DiscoverySectionProps) {
               ))}
             </div>
             
-            {/* Selected Region Display */}
-            {selectedRegion && (
+            {/* Selected Regions Display */}
+            {selectedRegions.length > 0 && (
               <div className="mt-6 text-center">
                 <p className="text-sm text-gray-600 korean-text mb-2">선택된 지역:</p>
-                <Badge variant="outline" className="text-lg px-4 py-2 korean-text">
-                  {koreanRegions.find(r => r.id === selectedRegion)?.name}
-                </Badge>
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {selectedRegions.map(regionId => (
+                    <Badge key={regionId} variant="outline" className="text-sm px-3 py-1 korean-text">
+                      {koreanRegions.find(r => r.id === regionId)?.name}
+                    </Badge>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -331,15 +376,103 @@ export default function DiscoverySection({ onBack }: DiscoverySectionProps) {
           <div className="text-center">
             <Button 
               onClick={handleStartDiscovery}
-              disabled={!selectedRegion}
+              disabled={selectedRegions.length === 0}
               className="bg-primary text-white px-8 py-4 rounded-xl font-semibold text-lg hover:bg-primary/90 transition-all transform hover:scale-105 shadow-lg h-auto korean-text"
             >
               <Heart className="mr-2 h-5 w-5" />
-              {selectedRegion ? '취향 찾기 시작!' : '먼저 지역을 선택해주세요'}
+              {selectedRegions.length > 0 ? '취향 찾기 시작!' : '먼저 지역을 선택해주세요'}
             </Button>
           </div>
         </div>
       </div>
+
+      {/* Result Modal with Sharing */}
+      <Dialog open={showResultModal} onOpenChange={setShowResultModal}>
+        <DialogContent className="max-w-md mx-auto">
+          <DialogHeader>
+            <DialogTitle className="text-center korean-heading text-xl text-navy">
+              🎉 당신을 위한 맞춤 여행지
+            </DialogTitle>
+          </DialogHeader>
+          
+          {finalRecommendation && (
+            <div className="space-y-4">
+              <img 
+                src={finalRecommendation.imageUrl} 
+                alt={finalRecommendation.nameKorean} 
+                className="w-full h-48 object-cover rounded-lg"
+              />
+              
+              <div className="text-center">
+                <h3 className="text-2xl font-bold text-navy mb-2 korean-heading">
+                  {finalRecommendation.nameKorean}
+                </h3>
+                <p className="text-gray-600 mb-4 korean-text">
+                  {finalRecommendation.description}
+                </p>
+                
+                <div className="flex flex-wrap gap-2 justify-center mb-4">
+                  {finalRecommendation.tags.map((tag, index) => (
+                    <Badge key={index} variant="secondary" className="korean-text text-xs">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+                
+                <div className="flex items-center justify-center gap-4 text-sm text-gray-500 mb-6">
+                  <div className="flex items-center">
+                    <MapPin className="w-4 h-4 mr-1" />
+                    <span className="korean-text">{finalRecommendation.region}</span>
+                  </div>
+                  <div>⭐ {finalRecommendation.rating}</div>
+                </div>
+              </div>
+              
+              {/* Sharing Buttons */}
+              <div className="space-y-3">
+                <p className="text-center text-sm text-gray-600 korean-text">친구들과 공유해보세요!</p>
+                <div className="flex gap-3 justify-center">
+                  <Button
+                    onClick={() => handleShare('instagram')}
+                    className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 rounded-lg korean-text flex items-center gap-2"
+                  >
+                    <Camera className="w-4 h-4" />
+                    Instagram
+                  </Button>
+                  <Button
+                    onClick={() => handleShare('kakao')}
+                    className="bg-yellow-400 text-gray-800 px-4 py-2 rounded-lg korean-text flex items-center gap-2"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    카카오톡
+                  </Button>
+                </div>
+              </div>
+              
+              <div className="flex gap-3 justify-center pt-4">
+                <Button
+                  onClick={() => {
+                    setShowResultModal(false);
+                    setShowSwipeCards(false);
+                    setCurrentCardIndex(0);
+                    setSelectedRegions([]);
+                  }}
+                  variant="outline"
+                  className="korean-text"
+                >
+                  새로 시작하기
+                </Button>
+                <Button
+                  onClick={() => setShowResultModal(false)}
+                  className="bg-primary text-white korean-text"
+                >
+                  닫기
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

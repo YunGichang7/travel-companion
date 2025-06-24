@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Target, Crosshair } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ArrowLeft, Target, Crosshair, MapPin, Camera, MessageCircle } from "lucide-react";
 import { Destination } from "@shared/schema";
 
 interface RandomMapSectionProps {
@@ -35,6 +36,7 @@ export default function RandomMapSection({ onBack }: RandomMapSectionProps) {
   const [isThrowingDart, setIsThrowingDart] = useState(false);
   const [dartPosition, setDartPosition] = useState<{ x: number; y: number } | null>(null);
   const [randomResult, setRandomResult] = useState<Destination | null>(null);
+  const [showResultModal, setShowResultModal] = useState(false);
 
   const handleRegionClick = (regionId: string) => {
     setSelectedRegion(regionId);
@@ -66,6 +68,7 @@ export default function RandomMapSection({ onBack }: RandomMapSectionProps) {
         if (response.ok) {
           const destination = await response.json();
           setRandomResult(destination);
+          setShowResultModal(true);
         }
       } catch (error) {
         console.error('Failed to get random destination:', error);
@@ -175,55 +178,113 @@ export default function RandomMapSection({ onBack }: RandomMapSectionProps) {
             <div className="bg-white rounded-2xl shadow-xl p-8">
               <h3 className="text-xl font-semibold text-navy mb-4 korean-heading">🎲 추천 결과</h3>
               
-              {!randomResult && !isThrowingDart && (
-                <div className="text-center py-12">
-                  <Target className="w-16 h-16 text-gray-300 mb-4 mx-auto" />
-                  <p className="text-gray-500 korean-text">
-                    {selectedRegion ? '다트를 던져서 여행지를 발견해보세요!' : '먼저 지역을 선택해주세요!'}
-                  </p>
-                </div>
-              )}
+              <div className="text-center py-12">
+                <Target className="w-16 h-16 text-gray-300 mb-4 mx-auto" />
+                <p className="text-gray-500 korean-text">
+                  {selectedRegion ? '다트를 던져서 여행지를 발견해보세요!' : '먼저 지역을 선택해주세요!'}
+                </p>
+              </div>
               
               {isThrowingDart && (
-                <div className="text-center py-12">
-                  <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-                  <p className="text-gray-500 korean-text">여행지를 찾고 있어요...</p>
+                <div className="absolute inset-0 bg-white/80 flex items-center justify-center rounded-2xl">
+                  <div className="text-center">
+                    <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+                    <p className="text-gray-500 korean-text">여행지를 찾고 있어요...</p>
+                  </div>
                 </div>
-              )}
-              
-              {randomResult && (
-                <Card className="overflow-hidden">
-                  <img 
-                    src={randomResult.imageUrl} 
-                    alt={randomResult.nameKorean} 
-                    className="w-full h-48 object-cover"
-                  />
-                  <CardContent className="p-6">
-                    <h4 className="text-xl font-semibold text-navy mb-2 korean-heading">
-                      {randomResult.nameKorean}
-                    </h4>
-                    <p className="text-gray-600 mb-4 korean-text">
-                      {randomResult.description}
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <div className="flex gap-2 flex-wrap">
-                        {randomResult.tags.map((tag, index) => (
-                          <Badge key={index} variant="secondary" className="korean-text">
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                      <div className="text-sm text-gray-500 korean-text">
-                        평점: ⭐ {randomResult.rating}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
               )}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Result Modal with Sharing */}
+      <Dialog open={showResultModal} onOpenChange={setShowResultModal}>
+        <DialogContent className="max-w-md mx-auto">
+          <DialogHeader>
+            <DialogTitle className="text-center korean-heading text-xl text-navy">
+              🎯 다트가 찾아낸 여행지
+            </DialogTitle>
+          </DialogHeader>
+          
+          {randomResult && (
+            <div className="space-y-4">
+              <img 
+                src={randomResult.imageUrl} 
+                alt={randomResult.nameKorean} 
+                className="w-full h-48 object-cover rounded-lg"
+              />
+              
+              <div className="text-center">
+                <h3 className="text-2xl font-bold text-navy mb-2 korean-heading">
+                  {randomResult.nameKorean}
+                </h3>
+                <p className="text-gray-600 mb-4 korean-text">
+                  {randomResult.description}
+                </p>
+                
+                <div className="flex flex-wrap gap-2 justify-center mb-4">
+                  {randomResult.tags.map((tag, index) => (
+                    <Badge key={index} variant="secondary" className="korean-text text-xs">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+                
+                <div className="flex items-center justify-center gap-4 text-sm text-gray-500 mb-6">
+                  <div className="flex items-center">
+                    <MapPin className="w-4 h-4 mr-1" />
+                    <span className="korean-text">{randomResult.region}</span>
+                  </div>
+                  <div>⭐ {randomResult.rating}</div>
+                </div>
+              </div>
+              
+              {/* Sharing Buttons */}
+              <div className="space-y-3">
+                <p className="text-center text-sm text-gray-600 korean-text">친구들과 공유해보세요!</p>
+                <div className="flex gap-3 justify-center">
+                  <Button
+                    onClick={() => handleShare('instagram')}
+                    className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 rounded-lg korean-text flex items-center gap-2"
+                  >
+                    <Camera className="w-4 h-4" />
+                    Instagram
+                  </Button>
+                  <Button
+                    onClick={() => handleShare('kakao')}
+                    className="bg-yellow-400 text-gray-800 px-4 py-2 rounded-lg korean-text flex items-center gap-2"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    카카오톡
+                  </Button>
+                </div>
+              </div>
+              
+              <div className="flex gap-3 justify-center pt-4">
+                <Button
+                  onClick={() => {
+                    setShowResultModal(false);
+                    setRandomResult(null);
+                    setDartPosition(null);
+                    setSelectedRegion(null);
+                  }}
+                  variant="outline"
+                  className="korean-text"
+                >
+                  새로 시작하기
+                </Button>
+                <Button
+                  onClick={() => setShowResultModal(false)}
+                  className="bg-primary text-white korean-text"
+                >
+                  닫기
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
