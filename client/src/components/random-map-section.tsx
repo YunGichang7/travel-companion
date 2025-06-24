@@ -51,13 +51,15 @@ export default function RandomMapSection({ onBack }: RandomMapSectionProps) {
   };
 
   const handleThrowDart = async () => {
-    if (!selectedRegion) return;
+    if (selectedRegions.length === 0) return;
     
     setIsThrowingDart(true);
     setRandomResult(null);
     
-    // Generate random dart position within the selected region
-    const region = koreanRegions.find(r => r.id === selectedRegion);
+    // Generate random dart position within one of the selected regions
+    const randomRegionIndex = Math.floor(Math.random() * selectedRegions.length);
+    const selectedRegionId = selectedRegions[randomRegionIndex];
+    const region = koreanRegions.find(r => r.id === selectedRegionId);
     if (region) {
       const dartX = region.x + (Math.random() - 0.5) * 10;
       const dartY = region.y + (Math.random() - 0.5) * 10;
@@ -67,7 +69,7 @@ export default function RandomMapSection({ onBack }: RandomMapSectionProps) {
     // Simulate dart throwing animation delay
     setTimeout(async () => {
       try {
-        const regionParam = selectedRegion === "all" ? "" : selectedRegion;
+        const regionParam = selectedRegionId;
         const queryParams = regionParam ? `?region=${regionParam}` : "";
         const response = await fetch(`/api/destinations/random${queryParams}`);
         
@@ -82,6 +84,21 @@ export default function RandomMapSection({ onBack }: RandomMapSectionProps) {
         setIsThrowingDart(false);
       }
     }, 1500);
+  };
+
+  const handleShare = (platform: 'instagram' | 'kakao') => {
+    if (!randomResult) return;
+    
+    const shareText = `TripPick에서 발견한 여행지: ${randomResult.nameKorean}\n${randomResult.description}`;
+    const shareUrl = window.location.href;
+    
+    if (platform === 'instagram') {
+      navigator.clipboard.writeText(`${shareText}\n\n${shareUrl}`);
+      alert('Instagram 공유용 텍스트가 클립보드에 복사되었습니다!');
+    } else if (platform === 'kakao') {
+      const kakaoUrl = `https://story.kakao.com/share?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
+      window.open(kakaoUrl, '_blank');
+    }
   };
 
   return (
@@ -175,7 +192,7 @@ export default function RandomMapSection({ onBack }: RandomMapSectionProps) {
             {/* Dart Throw Button */}
             <Button 
               onClick={handleThrowDart}
-              disabled={!selectedRegion || isThrowingDart}
+              disabled={selectedRegions.length === 0 || isThrowingDart}
               className="w-full mt-6 bg-primary text-white px-6 py-4 rounded-xl font-semibold text-lg hover:bg-primary/90 transition-all transform hover:scale-105 shadow-lg h-auto korean-text"
             >
               <Crosshair className="mr-2 h-5 w-5" />
