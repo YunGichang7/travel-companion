@@ -2,14 +2,15 @@ import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export default function Header() {
+interface HeaderProps {
+  onNavigate: (section: 'home' | 'random' | 'discovery') => void;
+}
+
+export default function Header({ onNavigate }: HeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const scrollToSection = (sectionId: string) => {
-    const element = document.getElementById(sectionId);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+  const handleNavigation = (section: 'home' | 'random' | 'discovery') => {
+    onNavigate(section);
     setIsMenuOpen(false);
   };
 
@@ -24,22 +25,22 @@ export default function Header() {
           
           <nav className="hidden md:flex items-center space-x-8">
             <button 
-              onClick={() => scrollToSection('random')}
+              onClick={() => handleNavigation('random')}
               className="text-gray-600 hover:text-primary transition-colors korean-text"
             >
               랜덤 추천
             </button>
             <button 
-              onClick={() => scrollToSection('discover')}
+              onClick={() => handleNavigation('discovery')}
               className="text-gray-600 hover:text-primary transition-colors korean-text"
             >
               여행지 찾기
             </button>
             <button 
-              onClick={() => scrollToSection('destinations')}
+              onClick={() => handleNavigation('home')}
               className="text-gray-600 hover:text-primary transition-colors korean-text"
             >
-              인기 여행지
+              홈
             </button>
           </nav>
           
@@ -58,22 +59,22 @@ export default function Header() {
           <div className="md:hidden border-t bg-white py-4">
             <div className="flex flex-col space-y-4">
               <button 
-                onClick={() => scrollToSection('random')}
+                onClick={() => handleNavigation('random')}
                 className="text-gray-600 hover:text-primary transition-colors korean-text text-left"
               >
                 랜덤 추천
               </button>
               <button 
-                onClick={() => scrollToSection('discover')}
+                onClick={() => handleNavigation('discovery')}
                 className="text-gray-600 hover:text-primary transition-colors korean-text text-left"
               >
                 여행지 찾기
               </button>
               <button 
-                onClick={() => scrollToSection('destinations')}
+                onClick={() => handleNavigation('home')}
                 className="text-gray-600 hover:text-primary transition-colors korean-text text-left"
               >
-                인기 여행지
+                홈
               </button>
             </div>
           </div>

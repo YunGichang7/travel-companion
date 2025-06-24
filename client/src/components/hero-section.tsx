@@ -1,13 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { MapPin, Heart } from "lucide-react";
 
-export default function HeroSection() {
-  const scrollToSection = (sectionId: string) => {
-    const element = document.getElementById(sectionId);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  };
+interface HeroSectionProps {
+  onNavigate: (section: 'home' | 'random' | 'discovery') => void;
+}
+
+export default function HeroSection({ onNavigate }: HeroSectionProps) {
 
   return (
     <section className="relative overflow-hidden bg-gradient-to-br from-primary/10 to-secondary/10">
@@ -28,14 +26,14 @@ export default function HeroSection() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Button 
-              onClick={() => scrollToSection('random')}
+              onClick={() => onNavigate('random')}
               className="bg-primary text-white px-8 py-4 rounded-xl font-semibold text-lg hover:bg-primary/90 transition-all transform hover:scale-105 shadow-lg h-auto korean-text"
             >
               <MapPin className="mr-2 h-5 w-5" />
               랜덤 여행지 추천
             </Button>
             <Button 
-              onClick={() => scrollToSection('discover')}
+              onClick={() => onNavigate('discovery')}
               variant="outline"
               className="bg-white text-navy px-8 py-4 rounded-xl font-semibold text-lg hover:bg-gray-50 transition-all transform hover:scale-105 shadow-lg border-2 border-gray-200 h-auto korean-text"
             >
