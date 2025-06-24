@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,7 +41,14 @@ export default function DiscoverySection({ onBack }: DiscoverySectionProps) {
   const [likedPreferences, setLikedPreferences] = useState<string[]>([]);
   const [finalRecommendation, setFinalRecommendation] = useState<Destination | null>(null);
   const [showResultModal, setShowResultModal] = useState(false);
+  const [isSwipeInProgress, setIsSwipeInProgress] = useState(false);
   const queryClient = useQueryClient();
+  
+  // Touch/mouse gesture refs
+  const cardRef = useRef<HTMLDivElement>(null);
+  const startX = useRef<number>(0);
+  const currentX = useRef<number>(0);
+  const isDragging = useRef<boolean>(false);
 
   const { data: destinations = [] } = useQuery<Destination[]>({
     queryKey: ['/api/destinations'],
@@ -123,9 +130,10 @@ export default function DiscoverySection({ onBack }: DiscoverySectionProps) {
   };
 
   const handleSwipe = (direction: 'left' | 'right') => {
-    if (currentCardIndex >= currentDestinations.length) return;
+    if (currentCardIndex >= currentDestinations.length || isSwipeInProgress) return;
     
     const destination = currentDestinations[currentCardIndex];
+    setIsSwipeInProgress(true);
     setSwipeDirection(direction);
     
     // Record swipe action
@@ -152,7 +160,76 @@ export default function DiscoverySection({ onBack }: DiscoverySectionProps) {
     setTimeout(() => {
       setCurrentCardIndex(prev => prev + 1);
       setSwipeDirection(null);
+      setIsSwipeInProgress(false);
     }, 300);
+  };
+
+  // Touch and mouse event handlers for swipe gestures
+  const handleStart = (clientX: number) => {
+    if (isSwipeInProgress) return;
+    startX.current = clientX;
+    currentX.current = clientX;
+    isDragging.current = true;
+  };
+
+  const handleMove = (clientX: number) => {
+    if (!isDragging.current || isSwipeInProgress) return;
+    currentX.current = clientX;
+    const deltaX = currentX.current - startX.current;
+    
+    if (cardRef.current) {
+      cardRef.current.style.transform = `translateX(${deltaX}px) rotate(${deltaX * 0.1}deg)`;
+      cardRef.current.style.opacity = `${Math.max(0.3, 1 - Math.abs(deltaX) / 300)}`;
+    }
+  };
+
+  const handleEnd = () => {
+    if (!isDragging.current || isSwipeInProgress) return;
+    isDragging.current = false;
+    
+    const deltaX = currentX.current - startX.current;
+    const threshold = 100;
+    
+    if (cardRef.current) {
+      cardRef.current.style.transform = '';
+      cardRef.current.style.opacity = '';
+    }
+    
+    if (Math.abs(deltaX) > threshold) {
+      if (deltaX > 0) {
+        handleSwipe('right');
+      } else {
+        handleSwipe('left');
+      }
+    }
+  };
+
+  // Mouse events
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    handleStart(e.clientX);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    handleMove(e.clientX);
+  };
+
+  const handleMouseUp = () => {
+    handleEnd();
+  };
+
+  // Touch events
+  const handleTouchStart = (e: React.TouchEvent) => {
+    handleStart(e.touches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    e.preventDefault();
+    handleMove(e.touches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    handleEnd();
   };
 
   if (showSwipeCards) {
@@ -233,14 +310,43 @@ export default function DiscoverySection({ onBack }: DiscoverySectionProps) {
           <div className="max-w-md mx-auto">
             <div className="relative h-[600px]">
               {currentCard && (
-                <div className={`absolute inset-0 bg-white rounded-2xl shadow-xl overflow-hidden transform transition-transform duration-300 ${
-                  swipeDirection === 'left' ? 'swipe-left' : swipeDirection === 'right' ? 'swipe-right' : ''
-                }`}>
-                  <img 
-                    src={currentCard.imageUrl} 
-                    alt={currentCard.nameKorean} 
-                    className="w-full h-72 object-cover"
-                  />
+                <div 
+                  ref={cardRef}
+                  className={`absolute inset-0 bg-white rounded-2xl shadow-xl overflow-hidden transform transition-transform duration-300 cursor-grab active:cursor-grabbing select-none ${
+                    swipeDirection === 'left' ? 'swipe-left' : swipeDirection === 'right' ? 'swipe-right' : ''
+                  } ${isSwipeInProgress ? (swipeDirection === 'right' ? 'animate-pulse bg-green-50' : 'animate-pulse bg-red-50') : ''}`}
+                  onMouseDown={handleMouseDown}
+                  onMouseMove={handleMouseMove}
+                  onMouseUp={handleMouseUp}
+                  onMouseLeave={handleMouseUp}
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                >
+                  <div className="relative">
+                    <img 
+                      src={currentCard.imageUrl} 
+                      alt={currentCard.nameKorean} 
+                      className="w-full h-72 object-cover pointer-events-none"
+                      draggable={false}
+                    />
+                    
+                    {/* Swipe indicators */}
+                    {isDragging.current && (
+                      <>
+                        <div className={`absolute top-1/2 left-4 transform -translate-y-1/2 ${
+                          currentX.current - startX.current < -50 ? 'opacity-100' : 'opacity-0'
+                        } transition-opacity duration-200`}>
+                          <div className="bg-red-500 text-white px-4 py-2 rounded-full font-bold shadow-lg">PASS</div>
+                        </div>
+                        <div className={`absolute top-1/2 right-4 transform -translate-y-1/2 ${
+                          currentX.current - startX.current > 50 ? 'opacity-100' : 'opacity-0'
+                        } transition-opacity duration-200`}>
+                          <div className="bg-green-500 text-white px-4 py-2 rounded-full font-bold shadow-lg">LIKE</div>
+                        </div>
+                      </>
+                    )}
+                  </div>
                   <div className="p-6">
                     <h3 className="text-2xl font-bold text-navy mb-2 korean-heading">
                       {currentCard.nameKorean}
