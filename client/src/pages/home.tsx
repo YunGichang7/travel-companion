@@ -8,7 +8,7 @@ export default function Home() {
   const [currentSection, setCurrentSection] = useState<'home' | 'random' | 'discovery'>('home');
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <Header onNavigate={setCurrentSection} />
       {currentSection === 'home' && <HeroSection onNavigate={setCurrentSection} />}
       {currentSection === 'random' && <RandomMapSection onBack={() => setCurrentSection('home')} />}

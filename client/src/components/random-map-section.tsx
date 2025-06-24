@@ -32,14 +32,20 @@ const koreanRegions = [
 ];
 
 export default function RandomMapSection({ onBack }: RandomMapSectionProps) {
-  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
+  const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
   const [isThrowingDart, setIsThrowingDart] = useState(false);
   const [dartPosition, setDartPosition] = useState<{ x: number; y: number } | null>(null);
   const [randomResult, setRandomResult] = useState<Destination | null>(null);
   const [showResultModal, setShowResultModal] = useState(false);
 
   const handleRegionClick = (regionId: string) => {
-    setSelectedRegion(regionId);
+    setSelectedRegions(prev => {
+      if (prev.includes(regionId)) {
+        return prev.filter(id => id !== regionId);
+      } else {
+        return [...prev, regionId];
+      }
+    });
     setRandomResult(null);
     setDartPosition(null);
   };
@@ -123,8 +129,8 @@ export default function RandomMapSection({ onBack }: RandomMapSectionProps) {
                     className={`absolute w-6 h-6 rounded-full border-2 border-white shadow-lg transition-all duration-300 hover:scale-150 z-10 ${
                       region.color
                     } ${
-                      selectedRegion === region.id 
-                        ? 'scale-150 ring-4 ring-yellow-400 ring-opacity-50' 
+                      selectedRegions.includes(region.id)
+                        ? 'scale-150 ring-4 ring-blue-400 ring-opacity-50' 
                         : 'hover:ring-2 hover:ring-gray-300'
                     }`}
                     style={{ 
@@ -151,13 +157,17 @@ export default function RandomMapSection({ onBack }: RandomMapSectionProps) {
                 )}
               </div>
               
-              {/* Selected Region Display */}
-              {selectedRegion && (
+              {/* Selected Regions Display */}
+              {selectedRegions.length > 0 && (
                 <div className="mt-6 text-center">
                   <p className="text-sm text-gray-600 korean-text mb-2">선택된 지역:</p>
-                  <Badge variant="outline" className="text-lg px-4 py-2 korean-text">
-                    {koreanRegions.find(r => r.id === selectedRegion)?.name}
-                  </Badge>
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    {selectedRegions.map(regionId => (
+                      <Badge key={regionId} variant="outline" className="text-sm px-3 py-1 korean-text">
+                        {koreanRegions.find(r => r.id === regionId)?.name}
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -181,7 +191,7 @@ export default function RandomMapSection({ onBack }: RandomMapSectionProps) {
               <div className="text-center py-12">
                 <Target className="w-16 h-16 text-gray-300 mb-4 mx-auto" />
                 <p className="text-gray-500 korean-text">
-                  {selectedRegion ? '다트를 던져서 여행지를 발견해보세요!' : '먼저 지역을 선택해주세요!'}
+                  {selectedRegions.length > 0 ? '다트를 던져서 여행지를 발견해보세요!' : '먼저 지역을 선택해주세요!'}
                 </p>
               </div>
               
@@ -267,7 +277,7 @@ export default function RandomMapSection({ onBack }: RandomMapSectionProps) {
                     setShowResultModal(false);
                     setRandomResult(null);
                     setDartPosition(null);
-                    setSelectedRegion(null);
+                    setSelectedRegions([]);
                   }}
                   variant="outline"
                   className="korean-text"
