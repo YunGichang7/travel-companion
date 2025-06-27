@@ -34,10 +34,10 @@ export class MemStorage implements IStorage {
   private initializeDestinations() {
     const initialDestinations: InsertDestination[] = [
       {
-        name: "Jeju Island",
+        name: "제주도",
         nameKorean: "제주도",
         description: "에메랄드빛 바다와 한라산이 어우러진 섬",
-        region: "jeju",
+        region: "제주도",
         category: "자연",
         imageUrl: "https://images.unsplash.com/photo-1578662996442-48f60103fc96?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=400",
         rating: 4.8,

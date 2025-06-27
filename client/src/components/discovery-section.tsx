@@ -1,4 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import * as d3 from "d3";
+import { feature } from "topojson-client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +36,9 @@ const koreanRegions = [
 
 export default function DiscoverySection({ onBack }: DiscoverySectionProps) {
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
+  // Ensure selectedRegion and svgRef are at the top of the main component
+  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
+  const svgRef = useRef<SVGSVGElement | null>(null);
   const [showSwipeCards, setShowSwipeCards] = useState(false);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [sessionId] = useState(() => Math.random().toString(36).substr(2, 9));
@@ -46,6 +51,45 @@ export default function DiscoverySection({ onBack }: DiscoverySectionProps) {
   
   // Touch/mouse gesture refs
   const cardRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const svg = d3.select(svgRef.current);
+    const width = 400;
+    const height = 500;
+
+    svg.selectAll('*').remove();
+    svg.attr('width', width).attr('height', height);
+
+    const projection = d3
+      .geoMercator()
+      .center([127.5, 36.3])
+      .scale(3000)
+      .translate([width / 2, height / 2]);
+
+    const path = d3.geoPath().projection(projection);
+
+    d3.json('/korea.topojson').then((topo: any) => {
+      const geo = feature(topo, topo.objects["skorea_provinces_2018_geo"]) as any;
+
+      svg
+        .selectAll('path')
+        .data(geo.features)
+        .join('path')
+        .attr('d', path as any)
+        .attr('fill', (d: any) =>
+          selectedRegions.includes(d.properties.name) ? '#f9a8d4' : 'transparent'
+        )
+        .attr('stroke', '#555')
+        .attr('stroke-width', 0.8)
+        .on('click', (_evt, d: any) => {
+          const region = d.properties.name;
+          setSelectedRegions(prev =>
+            prev.includes(region)
+              ? prev.filter(r => r !== region)
+              : [...prev, region]
+          );
+        });
+    });
+  }, [selectedRegions]);
   const startX = useRef<number>(0);
   const currentX = useRef<number>(0);
   const isDragging = useRef<boolean>(false);
@@ -432,52 +476,23 @@ export default function DiscoverySection({ onBack }: DiscoverySectionProps) {
         <div className="max-w-4xl mx-auto">
           {/* Interactive Map */}
           <div className="bg-white rounded-2xl shadow-xl p-8 mb-8">
-            <div className="relative h-96 bg-gradient-to-b from-sky-100 to-green-100 rounded-xl border-2 border-gray-200 overflow-hidden">
-              {/* Map Background */}
-              <div className="absolute inset-0 opacity-20">
-                <svg viewBox="0 0 100 100" className="w-full h-full">
-                  <path d="M20,20 Q50,10 80,20 Q90,50 80,80 Q50,90 20,80 Q10,50 20,20" 
-                        fill="currentColor" className="text-green-200" />
-                </svg>
-              </div>
-              
-              {/* Regions */}
-              {koreanRegions.map((region) => (
-                <button
-                  key={region.id}
-                  onClick={() => handleRegionClick(region.id)}
-                  className={`absolute w-6 h-6 rounded-full border-2 border-white shadow-lg transition-all duration-300 hover:scale-150 z-10 ${
-                    region.color
-                  } ${
-                    selectedRegions.includes(region.id)
-                      ? 'scale-150 ring-4 ring-pink-400 ring-opacity-50' 
-                      : 'hover:ring-2 hover:ring-gray-300'
-                  }`}
-                  style={{ 
-                    left: `${region.x}%`, 
-                    top: `${region.y}%`,
-                    transform: 'translate(-50%, -50%)'
-                  }}
-                  title={region.name}
-                />
-              ))}
+            <div className="mt-8 flex justify-center">
+              <svg ref={svgRef} className="border rounded-md shadow-md" />
             </div>
-            
             {/* Selected Regions Display */}
             {selectedRegions.length > 0 && (
               <div className="mt-6 text-center">
                 <p className="text-sm text-gray-600 korean-text mb-2">선택된 지역:</p>
                 <div className="flex flex-wrap gap-2 justify-center">
-                  {selectedRegions.map(regionId => (
-                    <Badge key={regionId} variant="outline" className="text-sm px-3 py-1 korean-text">
-                      {koreanRegions.find(r => r.id === regionId)?.name}
+                  {selectedRegions.map((regionId, index) => (
+                    <Badge key={regionId ?? index} variant="outline" className="text-sm px-3 py-1 korean-text">
+                      {koreanRegions.find(r => r.id === regionId)?.name || regionId}
                     </Badge>
                   ))}
                 </div>
               </div>
             )}
           </div>
-          
           {/* Start Discovery Button */}
           <div className="text-center">
             <Button 
@@ -518,8 +533,8 @@ export default function DiscoverySection({ onBack }: DiscoverySectionProps) {
                 </p>
                 
                 <div className="flex flex-wrap gap-2 justify-center mb-4">
-                  {finalRecommendation.tags.map((tag, index) => (
-                    <Badge key={index} variant="secondary" className="korean-text text-xs">
+                  {finalRecommendation.tags.map((tag, i) => (
+                    <Badge key={tag + i} variant="secondary" className="korean-text text-xs">
                       {tag}
                     </Badge>
                   ))}

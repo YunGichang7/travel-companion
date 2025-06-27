@@ -19,8 +19,13 @@ export default function Header({ onNavigate }: HeaderProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center">
-            <h1 className="text-2xl font-bold text-primary korean-heading">TripPick</h1>
-            <span className="ml-2 text-sm text-gray-500">🌍</span>
+            <button
+              onClick={() => handleNavigation('home')}
+              className="flex items-center focus:outline-none"
+            >
+              <h1 className="text-2xl font-bold text-primary korean-heading">TripPick</h1>
+              <span className="ml-2 text-sm text-gray-500">🌍</span>
+            </button>
           </div>
           
           <nav className="hidden md:flex items-center space-x-8">
